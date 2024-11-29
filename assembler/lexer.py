@@ -5,7 +5,7 @@ class Lexer:
         # Define the patterns for different tokens
         self.token_patterns = [
             (r'[ \t]+', None),  # Ignore whitespace
-            (r'MOV|ADD|SUB|JMP', 'INSTRUCTION'),  # Instructions
+            (r'MOV|ADD|SUB', 'INSTRUCTION'),  # Instructions
             (r'R[0-9]+', 'REGISTER'),  # Registers (e.g., R0, R1)
             (r'[a-zA-Z_][a-zA-Z0-9_]*:', 'LABEL'),  # Labels (e.g., start:)
             (r'[0-9]+', 'LITERAL'),  # Integers
