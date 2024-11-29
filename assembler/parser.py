@@ -87,4 +87,3 @@ class Parser:
                 raise SyntaxError(f"Invalid number of operands for '{name}': Expected {expected_count}, got {len(operands)}")
         else:
             raise SyntaxError(f"Unknown instruction: '{name}'")
-

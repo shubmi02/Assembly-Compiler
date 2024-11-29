@@ -6,7 +6,7 @@ class CodeGenerator:
     def generate(self):
         for instruction in self.instructions:
             if instruction['type'] == 'LABEL':
-                # Skip labels, as they may only be useful for branching instructions
+                # Skip labels, as they are only needed for branching instructions
                 continue
             elif instruction['type'] == 'INSTRUCTION':
                 machine_code_line = self._generate_instruction(instruction)
