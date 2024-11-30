@@ -15,6 +15,7 @@ class Lexer:
             (r',', 'COMMA'),                             # Separator
         ]
         self.token_regex = self._compile_token_regex()
+        self.errors = []  # List to store errors for error reporting
 
     def _compile_token_regex(self):
         # Compile all token patterns into a single regex
@@ -30,11 +31,18 @@ class Lexer:
             while position < len(line):
                 match = self.token_regex.match(line, position)
                 if not match:
-                    raise SyntaxError(f"Invalid token at line {line_number}: '{line[position:]}'")
-                position = match.end()
-                for name, value in match.groupdict().items():
-                    if name and value:
-                        tokens.append({'type': name, 'value': value, 'line': line_number})
-                        break
+                    # Record the error with line number and invalid token
+                    error_message = f"Invalid token at line {line_number}: '{line[position:]}'"
+                    self.errors.append(error_message)
+                    # Move to the next character to continue lexing
+                    position += 1
+                else:
+                    position = match.end()
+                    for name, value in match.groupdict().items():
+                        if name and value:
+                            tokens.append({'type': name, 'value': value, 'line': line_number})
+                            break
             line_number += 1
-        return tokens
+
+        # Return the tokens and any errors encountered
+        return tokens, self.errors

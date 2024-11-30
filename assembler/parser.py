@@ -2,22 +2,28 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens  # The list of tokens from the lexer
         self.position = 0     # Track the current token position
+        self.errors = []      # List to store errors for error reporting
 
     def parse(self):
         """
         Parse the list of tokens and build a representation of the program.
-
+        
         Returns:
             List[dict]: A list of parsed instructions, where each instruction is represented as a dictionary.
         """
         instructions = []
         
         while self.position < len(self.tokens):
-            instruction = self._parse_instruction()
-            if instruction:
-                instructions.append(instruction)
+            try:
+                instruction = self._parse_instruction()
+                if instruction:
+                    instructions.append(instruction)
+            except SyntaxError as e:
+                # Record the error and continue parsing
+                self.errors.append(str(e))
+                self.position += 1  # Skip the problematic token to continue parsing
         
-        return instructions
+        return instructions, self.errors
 
     def _parse_instruction(self):
         """
@@ -84,6 +90,6 @@ class Parser:
         if name in instruction_formats:
             expected_count = instruction_formats[name]
             if len(operands) != expected_count:
-                raise SyntaxError(f"Invalid number of operands for '{name}': Expected {expected_count}, got {len(operands)}")
+                raise SyntaxError(f"Invalid number of operands for '{name}' at line {self.tokens[self.position - 1]['line']}: Expected {expected_count}, got {len(operands)}")
         else:
-            raise SyntaxError(f"Unknown instruction: '{name}'")
+            raise SyntaxError(f"Unknown instruction '{name}' at line {self.tokens[self.position - 1]['line']}")
