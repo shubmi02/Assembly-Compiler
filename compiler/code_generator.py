@@ -8,11 +8,16 @@ class CodeGenerator:
 
     def generate(self):
         """
-        Generate intermediate code for the parsed statements.
+        Generate MASM assembly code for the parsed statements.
 
         Returns:
-            List[str]: List of generated intermediate code instructions.
+            List[str]: List of generated MASM assembly code instructions.
         """
+        self.generated_code.append(".data")
+        self.data_section = []
+        self.generated_code.append(".code")
+        self.generated_code.append("main PROC")
+
         while self.position < len(self.tokens):
             try:
                 self._generate_statement()
@@ -20,13 +25,14 @@ class CodeGenerator:
                 print(f"Code Generation Error: {e}")
                 return []
 
-        return self.generated_code
+        self.generated_code.append("main ENDP")
+        self.generated_code.append("END main")
+        return self.generated_code + self.data_section
 
     def _generate_statement(self):
         current_token = self._current_token()
 
         if current_token['type'] == 'KEYWORD' and current_token['value'] == 'int':
-            # Check if it's a function definition like "int main()"
             next_token = self._look_ahead()
             if next_token and next_token['type'] == 'IDENTIFIER':
                 next_next_token = self._look_ahead(2)
@@ -65,11 +71,14 @@ class CodeGenerator:
         self._consume('KEYWORD', 'int')
         identifier = self._consume('IDENTIFIER')['value']
 
+        # Add variable to the data section
+        self.data_section.append(f"{identifier} DWORD 0")
+
         # Optionally handle assignment
         if self._current_token()['type'] == 'OPERATOR' and self._current_token()['value'] == '=':
             self._consume('OPERATOR', '=')
             value = self._generate_expression()
-            self.generated_code.append(f"{identifier} = {value}")
+            self.generated_code.append(f"mov {identifier}, {value}")
 
         # Consume ';'
         self._consume('PUNCTUATION', ';')
@@ -88,8 +97,8 @@ class CodeGenerator:
         end_label = self._new_label()
 
         # Generate conditional branch code
-        self.generated_code.append(f"IF {condition} GOTO {true_label}")
-        self.generated_code.append(f"GOTO {end_label}")
+        self.generated_code.append(f"cmp {condition}, 0")
+        self.generated_code.append(f"je {end_label}")
 
         # Consume '{' and generate code for all statements inside the block
         self._consume('PUNCTUATION', '{')
@@ -108,7 +117,7 @@ class CodeGenerator:
         # Optionally handle return value
         if self._current_token()['type'] in ['LITERAL', 'IDENTIFIER']:
             return_value = self._consume(self._current_token()['type'])['value']
-            self.generated_code.append(f"RETURN {return_value}")
+            self.generated_code.append(f"mov eax, {return_value}")
 
         # Consume ';'
         self._consume('PUNCTUATION', ';')
@@ -118,7 +127,7 @@ class CodeGenerator:
         identifier = self._consume('IDENTIFIER')['value']
         self._consume('OPERATOR', '=')
         value = self._generate_expression()
-        self.generated_code.append(f"{identifier} = {value}")
+        self.generated_code.append(f"mov {identifier}, {value}")
 
         # Consume ';'
         self._consume('PUNCTUATION', ';')
@@ -132,7 +141,17 @@ class CodeGenerator:
                 operator = self._consume('OPERATOR')['value']
                 right_operand = self._consume(self._current_token()['type'])['value']
                 temp_var = self._new_temp()
-                self.generated_code.append(f"{temp_var} = {left_operand} {operator} {right_operand}")
+                self.generated_code.append(f"mov eax, {left_operand}")
+                if operator == '+':
+                    self.generated_code.append(f"add eax, {right_operand}")
+                elif operator == '-':
+                    self.generated_code.append(f"sub eax, {right_operand}")
+                elif operator == '*':
+                    self.generated_code.append(f"imul eax, {right_operand}")
+                elif operator == '/':
+                    self.generated_code.append(f"mov ebx, {right_operand}")
+                    self.generated_code.append("idiv ebx")
+                self.generated_code.append(f"mov {temp_var}, eax")
                 left_operand = temp_var
             return left_operand
         else:
@@ -144,8 +163,9 @@ class CodeGenerator:
         return label
 
     def _new_temp(self):
-        temp_var = f"t{self.temp_var_count}"
+        temp_var = f"temp{self.temp_var_count}"
         self.temp_var_count += 1
+        self.data_section.append(f"{temp_var} DWORD 0")
         return temp_var
 
     def _current_token(self):
